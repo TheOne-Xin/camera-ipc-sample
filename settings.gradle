@@ -1,0 +1,3 @@
+rootProject.name = "camera-ipc-sample"
+include ':camera_server'
+include ':camera_client'
