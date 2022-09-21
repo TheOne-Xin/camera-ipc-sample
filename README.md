@@ -17,7 +17,7 @@
 而方式7：共享内存理论是可以满足这个需求，不过我们来看下，如果要基于共享内存来实现数据的传输需要完成哪些事情。
 # 2 基于共享内存的跨进程通信设计
 假设目前有两个进程：进程A，进程B，进程A和进程B之间已经建立好了一块共享内存，两个进程都可以对该内存区域进行访问。目前进程A需要向进程B持续的传输大量数据，那么需要哪些步骤呢？
-# 2.1 设计思路
+## 2.1 设计思路
 ![shared_memory_draft](https://github.com/TheOne-Xin/camera-ipc-sample/blob/master/iamges/shared_memory_draft.jpg)
 
 1. step 1：进程A向共享内存写入一段数据。
