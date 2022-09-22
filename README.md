@@ -15,7 +15,7 @@
 那么在 Android 系统中，哪些数据是大量的，需要跨进程传递的，对 Android 图像系统比较了解的同学会想到屏幕上渲染的数据，对多媒体比较了解的同学会想到音视频数据，这些数据都有类似的特点：大数据量（高分辨率），持续性（高采样率，高刷新率）。
 此处以一路30帧的720p的 camera NV21数据为例，1秒钟的数据量为：1280 * 720 * 3 / 2 * 30 = 41472000Byte = 39.5MB，对于这个数量级的数据，一次内存 copy 对系统资源都是很大的损耗，这也证明了为什么前面介绍的方式1，2，4，5，6的通信方式不适合大数据的传输，一种原因就是因为他们需要进行多次的内存 copy 操作，效率较低。方式3：AIDL（Binder）虽然只有一次 copy 操作，但是 Binder 对单次通信数据量有大小限制（默认< 1Mb），同时由于很多其他通信操作是共享Binder内存的，如果Binder通信过于频繁，是会拖慢应用的响应时间。
 而方式7：共享内存理论是可以满足这个需求，不过我们来看下，如果要基于共享内存来实现数据的传输需要完成哪些事情。
-# 2 基于共享内存的跨进程通信设计
+# 2 解决方案
 假设目前有两个进程：进程A，进程B，进程A和进程B之间已经建立好了一块共享内存，两个进程都可以对该内存区域进行访问。目前进程A需要向进程B持续的传输大量数据，那么需要哪些步骤呢？
 ## 2.1 设计思路
 ![shared_memory_draft](https://github.com/TheOne-Xin/camera-ipc-sample/blob/master/iamges/shared_memory_draft.jpg)
@@ -110,7 +110,7 @@ public class ImageWriter implements AutoCloseable {
 ```
 我们看到如果要创建 ImageWriter 一定需要 Surface 这个参数，回头在看下 ImageReader 类源码，如果仔细的浏览过源码的话，会发现 ImageReader 有一个 getSurface() 接口，那么是不是把 ImageReader 的 surface 传递给 ImageWriter 就可以建立关联呢，答案是肯定的，那么剩下的工作就是把 ImageReader 的 surface 从消费者进程传递到生产者进程里就好了，这里通过 AIDL 进行传递就可以了（[Android AIDL 使用教程](https://blog.csdn.net/hello_1995/article/details/122094512)）。
 完成以上步骤，生成者进程就可以向 ImageWriter 中写入数据，消费者进程就可以通过 ImageReader 的回调收到这个数据了，通过实测这种方式传输 Camera NV21 数据，资源消耗非常低，可以满足 **大数据**，**高效** 的要求，同时实现又比较简单，不到100行代码就可以完成整个通信流程。
-# 3 实现
+# 3 示例代码
 按照以上介绍的方式，相信大家都可以实现一个高效的跨进程的消费者生产者模型。我基于该方式实现了一个多路 Camera 分发的 demo，供参考：[camera-ipc-sample](https://github.com/TheOne-Xin/camera-ipc-sample)。
 该工程包含两个App：MultiCameraService、MultiCameraClient。
 安装这两个 apk，手动给 MultiCameraService App 授予 Camera 访问权限，然后打开 MultiCameraClient App，点击预览开关按钮，正常情况下即可实现 Camera 预览。
